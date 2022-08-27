@@ -1,6 +1,6 @@
 ﻿using PixelWindowSystem;
 
-const uint width = 256, height = 144, scale = 4;
+const uint width = 128, height = 72, scale = 8;
 
 var appManager = new GameOfLifeAppManager(width, height, scale);
 

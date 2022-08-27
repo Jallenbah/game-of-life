@@ -15,6 +15,9 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
     // Second dimension is width, third dimension is height.
     private CellState[,,] _gridData;
 
+    // When true, simulation is paused and won't update, otherwise it will be updated in the fixed update method.
+    private bool _paused = true;
+
     // The SFML render window. Stored from the OnLoad method for reading input.
     private RenderWindow _renderWindow;
 
@@ -42,15 +45,18 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
     public void OnLoad(RenderWindow renderWindow)
     {
         _renderWindow = renderWindow;
+        _renderWindow.KeyPressed += KeyPressedHandler;
+    }
 
-        var rand = new Random();
-        // Randomly set cells to dead or alive as a starting point to get things going
-        for (int x = 0; x < _width; x++)
+    private void KeyPressedHandler(object? sender, KeyEventArgs e)
+    {
+        switch (e.Code)
         {
-            for (int y = 0; y < _height; y++)
-            {
-                _gridData[_currentFrameIndex, x, y] = (CellState)rand.Next(0, 2);
-            }
+            case Keyboard.Key.Space:
+                _paused = !_paused;
+                break;
+            default:
+                return;
         }
     }
 
@@ -83,8 +89,7 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
         }
 
         // Clicked outside of window, do nothing (and therefore avoid trying to write pixels outside of the bounds of the array)
-        if (mousePos.X >= _width * _scale ||
-            mousePos.Y >= _height * _scale)
+        if (IsMouseOutsideOfWindow(mousePos.X, mousePos.Y))
         {
             return;
         }
@@ -93,8 +98,21 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
         _gridData[_currentFrameIndex, canvasPos.x, canvasPos.y] = newCellState.Value;
     }
 
+    private bool IsMouseOutsideOfWindow(int x, int y)
+    {
+        return
+            x < 0 || y < 0 ||
+            x >= _width * _scale ||
+            y >= _height * _scale;
+    }
+
     public void FixedUpdate(float timeStep)
     {
+        if (_paused)
+        {
+            return;
+        }
+
         // Clear other frame first, ready for us to write to it
         for (uint x = 0; x < _width; x++)
         {

@@ -1,5 +1,6 @@
 ﻿using PixelWindowSystem;
 using SFML.Graphics;
+using SFML.Window;
 
 /// <summary>
 /// Implementation of game of life. Implements <see cref="IPixelWindowAppManager"/> for rendering.
@@ -13,6 +14,9 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
     // First dimension is the frame index which essentially allows easy swapping between two 2d arrays. This will always be 2.
     // Second dimension is width, third dimension is height.
     private CellState[,,] _gridData;
+
+    // The SFML render window. Stored from the OnLoad method for reading input.
+    private RenderWindow _renderWindow;
 
     /// <summary>
     /// Initialise the game of life app to run within a <see cref="PixelWindow"/>
@@ -37,6 +41,8 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
 
     public void OnLoad(RenderWindow renderWindow)
     {
+        _renderWindow = renderWindow;
+
         var rand = new Random();
         // Randomly set cells to dead or alive as a starting point to get things going
         for (int x = 0; x < _width; x++)
@@ -48,7 +54,44 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
         }
     }
 
-    public void Update(float frameTime) { } // Nothing to update per frame
+    public void Update(float frameTime)
+    {
+        HandleDrawingCells();
+    }
+
+    // Function used in the Update method to handle drawing live and dead cells with the mouse
+    private void HandleDrawingCells()
+    {
+        var mousePos = Mouse.GetPosition(_renderWindow);
+        var lmbDown = Mouse.IsButtonPressed(Mouse.Button.Left);
+        var rmbDown = Mouse.IsButtonPressed(Mouse.Button.Right);
+
+        CellState? newCellState = null;
+        if (lmbDown)
+        {
+            newCellState = CellState.Live;
+        }
+        else if (rmbDown)
+        {
+            newCellState = CellState.Dead;
+        }
+
+        // No buttons pressed, do nothing
+        if (newCellState == null)
+        {
+            return;
+        }
+
+        // Clicked outside of window, do nothing (and therefore avoid trying to write pixels outside of the bounds of the array)
+        if (mousePos.X >= _width * _scale ||
+            mousePos.Y >= _height * _scale)
+        {
+            return;
+        }
+
+        var canvasPos = (x: mousePos.X / _scale, y: mousePos.Y / _scale);
+        _gridData[_currentFrameIndex, canvasPos.x, canvasPos.y] = newCellState.Value;
+    }
 
     public void FixedUpdate(float timeStep)
     {

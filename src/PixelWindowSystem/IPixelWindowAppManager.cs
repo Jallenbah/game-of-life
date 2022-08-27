@@ -11,7 +11,9 @@
         /// setting up input events, loading data etc.
         /// </summary>
         /// <param name="renderWindow">The <see cref="SFML.Graphics.RenderWindow"/> used by the <see cref="PixelWindow"/></param>
-        void OnLoad(SFML.Graphics.RenderWindow renderWindow);
+        /// <param name="showGrid">A function which you can store a pointer to for toggling display of the pixel grid</param>
+        /// <param name="showOutline">A function which you can store a pointer to for toggling display of the screen outline</param>
+        void OnLoad(SFML.Graphics.RenderWindow renderWindow, Action<bool> showGrid, Action<bool> showOutline);
 
         /// <summary>
         /// Update function, for updating non-render data every frame (e.g. handling input)

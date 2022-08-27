@@ -31,9 +31,19 @@ namespace PixelWindowSystem
 
         // SFML objects. A render texture is used to blow up pixels to a larger size. That render texture is drawn using a sprite
         // which has been scaled to the size of the window.
-        private RenderWindow? _renderWindow { get; set; }
-        private RenderTexture? _renderTexture { get; set; }
-        private Sprite? _renderTextureSprite { get; set; }
+        private RenderWindow? _renderWindow;
+        private RenderTexture? _renderTexture;
+        private Sprite? _renderTextureSprite;
+
+        // Used for displaying a pixel grid over the top of the canvas
+        private bool _showGrid = true;
+        private RenderTexture? _gridRenderTexture;
+        private Sprite? _gridSprite;
+
+        // Used for displaying an outline around the edge of the canvas
+        private bool _showOutline = true;
+        private RenderTexture? _outlineRenderTexture;
+        private Sprite? _outlineSprite;
 
         /// <summary>
         /// Sets up and opens a new window with the specified parameters
@@ -42,22 +52,8 @@ namespace PixelWindowSystem
         /// <param name="height">The actual screen pixel height of the window</param>
         /// <param name="pixelScale">The size of each pixel. 1 would be a 1:1 scale of screen pixels to drawn pixels. 2 would be double sized pixels etc.</param>
         /// <param name="title">The window title. Performance debug data will be periodically appended to this also.</param>
-        /// <param name="onLoad">
-        /// On load function, run once at the start, for setting up input events, loading data etc.
-        /// Receives the SFML RenderWindow as a parameter (this has everything required to set up events and query input)
-        /// </param>
-        /// <param name="update">
-        /// Update function, for updating non-render data every frame (e.g. handling input).
-        /// Receives the frametime in ms as a parameter.
-        /// </param>
-        /// <param name="fixedUpdate">
-        /// Update function, for changing non-render data at a fixed rate independent of rendering (e.g. 50hz).
-        /// Receives the fixed timestep period in ms as a parameter.
-        /// </param>
-        /// <param name="render">
-        /// Render function, for updating the pixel data every frame.
-        /// Recevies the pixel data to be written to, and the frametime in ms as parameters.
-        /// </param>
+        /// <param name="appManager">An instance of <see cref="IPixelWindowAppManager"/> to control the application</param>
+        /// <param name="fixedTimestep">The fixed timestep between fixed updates, in ms</param>
         /// <param name="framerateLimit">The actual screen pixel width of the window</param>
         public PixelWindow(uint width, uint height, uint pixelScale, string title, IPixelWindowAppManager appManager,
             float fixedTimestep = 20, uint framerateLimit = 300)
@@ -75,6 +71,12 @@ namespace PixelWindowSystem
             _pixelData = new PixelData(_renderWidth, _renderHeight);
 
             SetupSfmlWindow(framerateLimit);
+            SetupGrid();
+            SetupOutline();
+
+            _appManager.OnLoad(_renderWindow!,
+                (show) => { _showGrid = show; },
+                (show) => { _showOutline = show; });
         }
 
         private void SetupSfmlWindow(uint framerateLimit)
@@ -96,7 +98,56 @@ namespace PixelWindowSystem
                 ((Window)sender!).Close();
             });
 
-            _appManager.OnLoad(_renderWindow);
+        }
+
+        // Sets up a grid to render by drawing it once to a render texture, which can be repeatedly drawn over the top of
+        // everything with a sprite
+        private void SetupGrid()
+        {
+            _gridRenderTexture = new RenderTexture(_width, _height);
+            _gridRenderTexture.Clear(new Color(0, 0, 0, 0)); // Fill with fully transparent pixels
+
+            var lineColour = new Color(100, 100, 100);
+
+            var verticalLine = new RectangleShape(new Vector2f(1f, _height));
+            verticalLine.FillColor = lineColour;
+
+            // Vertical lines
+            for (int x = 0; x <= _renderWidth; x++)
+            {
+                verticalLine.Position = new Vector2f(x * _pixelScale, 0);
+                _gridRenderTexture.Draw(verticalLine);
+            }
+
+            var horizontalLine = new RectangleShape(new Vector2f(_width, 1f));
+            horizontalLine.FillColor = lineColour;
+
+            // Vertical lines
+            for (int y = 0; y <= _renderHeight; y++)
+            {
+                horizontalLine.Position = new Vector2f(0, y * _pixelScale);
+                _gridRenderTexture.Draw(horizontalLine);
+            }
+
+            _gridSprite = new Sprite(_gridRenderTexture.Texture);
+        }
+
+        // Sets up an outline around the edge of the screen
+        private void SetupOutline()
+        {
+            _outlineRenderTexture = new RenderTexture(_width, _height);
+            _outlineRenderTexture.Clear(new Color(0, 0, 0, 0)); // Fill with fully transparent pixels
+
+            var lineColour = new Color(255, 0, 0);
+
+            var outlineRect = new RectangleShape(new Vector2f(_width, _height));
+            outlineRect.OutlineColor = lineColour;
+            outlineRect.OutlineThickness = -2; // Negative means outline goes into shape rather than outside of boundaries
+            outlineRect.FillColor = new Color(0, 0, 0, 0); // Fully transparent as we only want the outline
+
+            _outlineRenderTexture.Draw(outlineRect);
+
+            _outlineSprite = new Sprite(_outlineRenderTexture.Texture);
         }
 
         /// <summary>
@@ -188,6 +239,17 @@ namespace PixelWindowSystem
             _renderTexture!.Texture.Update(_pixelData.RawData);
             _renderWindow!.Clear();
             _renderWindow.Draw(_renderTextureSprite);
+
+            if (_showGrid)
+            {
+                _renderWindow.Draw(_gridSprite);
+            }
+
+            if (_showOutline)
+            {
+                _renderWindow.Draw(_outlineSprite);
+            }
+
             _renderWindow.Display();
         }
     }

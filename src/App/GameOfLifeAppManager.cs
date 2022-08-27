@@ -19,7 +19,13 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
     private bool _paused = true;
 
     // The SFML render window. Stored from the OnLoad method for reading input.
-    private RenderWindow _renderWindow;
+    private RenderWindow? _renderWindow;
+
+    // Functions we get from the PixelWindow class, passed in through OnLoad for us to toggle the grid and screen outline
+    private Action<bool>? ShowGrid, ShowOutline;
+
+    // Tracks the current state of whether the grid is shown, for use with the ShowGrid function
+    private bool _showGrid = true;
 
     /// <summary>
     /// Initialise the game of life app to run within a <see cref="PixelWindow"/>
@@ -42,10 +48,15 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
     private int _otherFrameIndex => _currentFrameIndex == 0 ? 1 : 0;
     private void SwapFrame() { _currentFrameIndex = _otherFrameIndex; }
 
-    public void OnLoad(RenderWindow renderWindow)
+    public void OnLoad(RenderWindow renderWindow, Action<bool> showGrid, Action<bool> showOutline)
     {
         _renderWindow = renderWindow;
         _renderWindow.KeyPressed += KeyPressedHandler;
+        ShowGrid = showGrid;
+        ShowOutline = showOutline;
+
+        ShowOutline(_paused);
+        ShowGrid(_showGrid);
     }
 
     // Handler for all key press events sent to the window
@@ -55,10 +66,16 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
         {
             case Keyboard.Key.Space: // Pause
                 _paused = !_paused;
+                ShowOutline!(_paused);
                 break;
             case Keyboard.Key.C: // Clear screen
                 ClearFrame(_currentFrameIndex);
                 _paused = true; // Always pause when screen is cleared
+                ShowOutline!(_paused);
+                break;
+            case Keyboard.Key.G: // Toggle grid
+                _showGrid = !_showGrid;
+                ShowGrid!(_showGrid);
                 break;
             default:
                 return;
@@ -69,7 +86,7 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
     {
         HandleDrawingCells();
 
-        _renderWindow.SetTitle($"Game of Life - {(_paused ? "PAUSED -" : "")} Clear [C], Pause [Space]");
+        _renderWindow!.SetTitle($"Game of Life - {(_paused ? "PAUSED -" : "")} Clear [C], Pause [Space], Toggle Grid [G]");
     }
 
     // Function used in the Update method to handle drawing live and dead cells with the mouse

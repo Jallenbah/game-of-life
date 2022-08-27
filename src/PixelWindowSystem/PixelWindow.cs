@@ -182,11 +182,21 @@ namespace PixelWindowSystem
 
                 RunProcessAndAddToTotalTime(() => { _appManager.Update(frameTime); }, ref perf_totalUpdateMs, performanceStopwatch);
 
+                const byte maxFixedUpdatesInOneFrame = 10;
+                byte fixedUpdatesThisFrame = 0;
                 while (frameTimeAccumulatorMs >= _fixedTimestep)
                 {
                     RunProcessAndAddToTotalTime( () => { _appManager.FixedUpdate(_fixedTimestep); }, ref perf_totalFixedUpdateMs, performanceStopwatch);
                     perf_numberOfFixedTimestepIterationsTimed++;
                     frameTimeAccumulatorMs -= _fixedTimestep;
+
+                    fixedUpdatesThisFrame++;
+                    if (fixedUpdatesThisFrame >= maxFixedUpdatesInOneFrame)
+                    {
+                        // Avoid spiral of death where we accumulate more and more updates per frame if fixed
+                        // update is too slow to keep up with the set fixed timestep.
+                        break;
+                    }
                 }
 
                 RunProcessAndAddToTotalTime(Prerender, ref perf_totalPreRenderMs, performanceStopwatch);

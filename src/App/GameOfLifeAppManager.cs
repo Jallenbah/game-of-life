@@ -48,12 +48,17 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
         _renderWindow.KeyPressed += KeyPressedHandler;
     }
 
+    // Handler for all key press events sent to the window
     private void KeyPressedHandler(object? sender, KeyEventArgs e)
     {
         switch (e.Code)
         {
-            case Keyboard.Key.Space:
+            case Keyboard.Key.Space: // Pause
                 _paused = !_paused;
+                break;
+            case Keyboard.Key.C: // Clear screen
+                ClearFrame(_currentFrameIndex);
+                _paused = true; // Always pause when screen is cleared
                 break;
             default:
                 return;
@@ -63,6 +68,8 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
     public void Update(float frameTime)
     {
         HandleDrawingCells();
+
+        _renderWindow.SetTitle($"Game of Life - {(_paused ? "PAUSED -" : "")} Clear [C], Pause [Space]");
     }
 
     // Function used in the Update method to handle drawing live and dead cells with the mouse
@@ -106,6 +113,18 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
             y >= _height * _scale;
     }
 
+    // Sets all cells in the given frame to dead
+    private void ClearFrame(int frameIndex)
+    {
+        for (uint x = 0; x < _width; x++)
+        {
+            for (uint y = 0; y < _height; y++)
+            {
+                _gridData[frameIndex, x, y] = CellState.Dead;
+            }
+        }
+    }
+
     public void FixedUpdate(float timeStep)
     {
         if (_paused)
@@ -114,13 +133,7 @@ internal class GameOfLifeAppManager : IPixelWindowAppManager
         }
 
         // Clear other frame first, ready for us to write to it
-        for (uint x = 0; x < _width; x++)
-        {
-            for (uint y = 0; y < _height; y++)
-            {
-                _gridData[_otherFrameIndex, x, y] = CellState.Dead;
-            }
-        }
+        ClearFrame(_otherFrameIndex);
 
         // Calculate state of each cell in other frame for next render. Only set cells if they are live, as we cleared everything to empty.
         for (int x = 0; x < _width; x++)
